@@ -14,7 +14,8 @@ services:
         ports:
             - "8000:8000"
         depends_on:
-            - mysql
+            mysql:
+                condition: service_healthy
         networks:
             - laravel
 
@@ -22,19 +23,21 @@ services:
         image: mysql:8.0
         container_name: todo-mysql
         restart: unless-stopped
-#        environment:
-#            MYSQL_DATABASE: to_do_app
-#            MYSQL_ROOT_PASSWORD: rootpass
-#            MYSQL_USER: root
-#            MYSQL_PASSWORD: rootpass
-        env_file:
-            - .env
+        environment:
+            MYSQL_ROOT_PASSWORD: rootpass
+            MYSQL_DATABASE: to_do_app
         volumes:
             - mysql-data:/var/lib/mysql
         ports:
-            - "3306:3306"
+            - "3308:3306"
         networks:
             - laravel
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+            timeout: 20s
+            retries: 10
+            interval: 10s
+            start_period: 30s
 
     node:
         image: node:18
@@ -45,6 +48,22 @@ services:
         command: sh -c "npm install && npm run dev"
         depends_on:
             - app
+        networks:
+            - laravel
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: todo-phpmyadmin
+        restart: always
+        ports:
+            - "8080:80"
+        environment:
+            PMA_HOST: todo-mysql
+            PMA_PORT: 3306
+            MYSQL_ROOT_PASSWORD: rootpass
+        depends_on:
+            mysql:
+                condition: service_healthy
         networks:
             - laravel
 
